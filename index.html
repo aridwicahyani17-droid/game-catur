@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catur Ari ♟️</title>
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh; display:flex; justify-content:center; align-items:center;
+  font-family:Arial,sans-serif; background:linear-gradient(135deg,#101827,#263b55);
+  color:white; padding:18px;
+}
+.game{width:min(100%,620px); text-align:center}
+h1{margin:0 0 6px;font-size:clamp(26px,7vw,42px)}
+.subtitle{opacity:.8;margin-bottom:14px}
+#status{background:#172334;border-radius:14px;padding:12px;margin-bottom:14px;font-weight:bold}
+.board{
+  width:min(92vw,560px); aspect-ratio:1; margin:auto; display:grid;
+  grid-template-columns:repeat(8,1fr); border:6px solid #0d1520;
+  border-radius:12px; overflow:hidden; box-shadow:0 15px 35px #0008;
+}
+.square{
+  display:flex;align-items:center;justify-content:center;
+  font-size:clamp(27px,8vw,58px); cursor:pointer; user-select:none;
+  position:relative; transition:.15s;
+}
+.light{background:#f0d9b5}.dark{background:#b58863}
+.square.selected{box-shadow:inset 0 0 0 5px #ffd43b}
+.square.move::after{
+  content:""; width:22%; aspect-ratio:1; background:#31c48d;
+  border-radius:50%; position:absolute; opacity:.85;
+}
+.square.capture::after{
+  content:""; position:absolute; inset:7%; border:5px solid #ef4444;
+  border-radius:50%;
+}
+.piece{filter:drop-shadow(1px 2px 1px #0008);z-index:1}
+.controls{display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+button{
+  border:0;border-radius:10px;padding:12px 20px;font-size:16px;
+  font-weight:bold;cursor:pointer;background:#facc15;color:#172334;
+}
+button:hover{transform:scale(1.04)}
+.info{margin-top:14px;opacity:.8;font-size:13px}
+</style>
+</head>
+<body>
+<div class="game">
+  <h1>♟️ CATUR ARI</h1>
+  <div class="subtitle">Catur simple • Bisa dimainkan di HP & komputer</div>
+  <div id="status">Giliran: Putih</div>
+  <div id="board" class="board"></div>
+  <div class="controls">
+    <button onclick="resetGame()">🔄 Mulai Ulang</button>
+  </div>
+  <div class="info">Klik bidak lalu klik kotak tujuan. Menang jika raja lawan tertangkap 👑</div>
+</div>
+
+<script>
+const symbols = {
+  wK:"♔",wQ:"♕",wR:"♖",wB:"♗",wN:"♘",wP:"♙",
+  bK:"♚",bQ:"♛",bR:"♜",bB:"♝",bN:"♞",bP:"♟"
+};
+
+let board, turn, selected, gameOver;
+
+function resetGame(){
+  board = [
+    ["bR","bN","bB","bQ","bK","bB","bN","bR"],
+    ["bP","bP","bP","bP","bP","bP","bP","bP"],
+    [null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null],
+    ["wP","wP","wP","wP","wP","wP","wP","wP"],
+    ["wR","wN","wB","wQ","wK","wB","wN","wR"]
+  ];
+  turn="w"; selected=null; gameOver=false; draw();
+}
+
+function draw(){
+  const el=document.getElementById("board");
+  el.innerHTML="";
+  document.getElementById("status").textContent =
+    gameOver ? "🎉 Permainan selesai!" : `Giliran: ${turn==="w"?"Putih ⚪":"Hitam ⚫"}`;
+
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const sq=document.createElement("div");
+      sq.className="square "+((r+c)%2?"dark":"light");
+      sq.dataset.r=r; sq.dataset.c=c;
+      const piece=board[r][c];
+
+      if(selected && selected.r===r && selected.c===c) sq.classList.add("selected");
+      if(selected && isLegal(selected.r,selected.c,r,c)){
+        sq.classList.add(piece ? "capture":"move");
+      }
+
+      if(piece){
+        const span=document.createElement("span");
+        span.className="piece"; span.textContent=symbols[piece];
+        sq.appendChild(span);
+      }
+      sq.onclick=()=>clickSquare(r,c);
+      el.appendChild(sq);
+    }
+  }
+}
+
+function clickSquare(r,c){
+  if(gameOver) return;
+  const piece=board[r][c];
+
+  if(!selected){
+    if(piece && piece[0]===turn){
+      selected={r,c}; draw();
+    }
+    return;
+  }
+
+  if(piece && piece[0]===turn){
+    selected={r,c}; draw(); return;
+  }
+
+  if(isLegal(selected.r,selected.c,r,c)){
+    const captured=board[r][c];
+    board[r][c]=board[selected.r][selected.c];
+    board[selected.r][selected.c]=null;
+
+    if(captured && captured[1]==="K"){
+      gameOver=true;
+      document.getElementById("status").textContent =
+        `🏆 ${turn==="w"?"Putih":"Hitam"} MENANG!`;
+    } else {
+      turn=turn==="w"?"b":"w";
+    }
+    selected=null; draw();
+  }
+}
+
+function isLegal(fr,fc,tr,tc){
+  const piece=board[fr][fc];
+  if(!piece) return false;
+  if(board[tr][tc] && board[tr][tc][0]===piece[0]) return false;
+
+  const type=piece[1], dr=tr-fr, dc=tc-fc;
+  const adr=Math.abs(dr), adc=Math.abs(dc);
+
+  if(type==="P"){
+    const dir=piece[0]==="w"?-1:1;
+    const start=piece[0]==="w"?6:1;
+    if(dc===0 && !board[tr][tc] && dr===dir) return true;
+    if(dc===0 && fr===start && dr===2*dir &&
+       !board[fr+dir][fc] && !board[tr][tc]) return true;
+    if(adc===1 && dr===dir && board[tr][tc]) return true;
+    return false;
+  }
+
+  if(type==="N") return (adr===2&&adc===1)||(adr===1&&adc===2);
+  if(type==="K") return adr<=1 && adc<=1;
+  if(type==="R") return (dr===0 || dc===0) && clearPath(fr,fc,tr,tc);
+  if(type==="B") return adr===adc && clearPath(fr,fc,tr,tc);
+  if(type==="Q") return ((dr===0||dc===0)||(adr===adc)) && clearPath(fr,fc,tr,tc);
+
+  return false;
+}
+
+function clearPath(fr,fc,tr,tc){
+  const sr=Math.sign(tr-fr), sc=Math.sign(tc-fc);
+  let r=fr+sr,c=fc+sc;
+  while(r!==tr || c!==tc){
+    if(board[r][c]) return false;
+    r+=sr;c+=sc;
+  }
+  return true;
+}
+
+resetGame();
+</script>
+</body>
+</html>
